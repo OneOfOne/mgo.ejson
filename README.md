@@ -14,13 +14,13 @@ This is alpha quality at best, and while it works for most ejson types, it is st
 
 ## Usage
 
-#### func  ConvertEjson
+#### func  Normalize
 
 ```go
-func ConvertEjson(j []byte) (bson.M, error)
+func Normalize(m map[string]interface{}) error
 ```
-ConvertEjson takes in ejson and converts it to a clean **bson.M** object that can be
-used with bson.Marshal.
+Normalize takes in an ejson map and normalizes it to regular bson.
+
 
 #### func  Unmarshal
 
