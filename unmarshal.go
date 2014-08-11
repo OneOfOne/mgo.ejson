@@ -11,13 +11,8 @@ import (
 	"labix.org/v2/mgo/bson"
 )
 
-// ConvertEjson takes in ejson and converts it to a clean bson.M object
-// that can be used with bson.Marshal.
-func ConvertEjson(j []byte) (bson.M, error) {
-	var m map[string]interface{}
-	if err := json.Unmarshal([]byte(j), &m); err != nil {
-		return nil, err
-	}
+// Normalize takes in an ejson map and normalizes it to regular bson.
+func Normalize(m map[string]interface{}) error {
 	for key := range m {
 		if sm, ok := m[key].(map[string]interface{}); ok {
 			if d, ok := sm["$date"].(float64); ok {
@@ -50,17 +45,17 @@ func ConvertEjson(j []byte) (bson.M, error) {
 					}
 					m[key] = &dbref
 				} else {
-					return nil, fmt.Errorf(`ejson: "%s" expected a {"$ref": "string", "$id": "hex"} got "%+v"`, key, sm)
+					return fmt.Errorf(`ejson: "%s" expected a {"$ref": "string", "$id": "hex"} got "%+v"`, key, sm)
 				}
 			} else if bin, ok := sm["$binary"].(string); ok {
 				b64, err := base64.StdEncoding.DecodeString(bin)
 				if err != nil {
-					return nil, fmt.Errorf(`ejson: "%s" expected valid a base64 string in $binary, got: %v`, key, err)
+					return fmt.Errorf(`ejson: "%s" expected valid a base64 string in $binary, got: %v`, key, err)
 				}
 				if t, ok := sm["$type"].(string); ok {
 					ti, err := strconv.ParseUint(t, 16, 8)
 					if err != nil {
-						return nil, fmt.Errorf(`ejson: "%s" expected a valid hex byte in $type, got: %v`, key, err)
+						return fmt.Errorf(`ejson: "%s" expected a valid hex byte in $type, got: %v`, key, err)
 					}
 					bin := bson.Binary{
 						Kind: byte(ti),
@@ -68,10 +63,14 @@ func ConvertEjson(j []byte) (bson.M, error) {
 					}
 					m[key] = &bin
 				}
+			} else {
+				if err := Normalize(sm); err != nil {
+					return err
+				}
 			}
 		}
 	}
-	return m, nil
+	return nil
 }
 
 //Unmarshal takes ejson and a pointer to a struct or a map,
@@ -80,8 +79,11 @@ func ConvertEjson(j []byte) (bson.M, error) {
 //
 //How it works: ejson -> json.Unmarshal -> cleanup -> bson.Marshal -> bson.Unmarshal
 func Unmarshal(j []byte, v interface{}) error {
-	m, err := ConvertEjson(j)
-	if err != nil {
+	var m map[string]interface{}
+	if err := json.Unmarshal([]byte(j), &m); err != nil {
+		return err
+	}
+	if err := Normalize(m); err != nil {
 		return err
 	}
 	js, err := bson.Marshal(m)

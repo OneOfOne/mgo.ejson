@@ -1,6 +1,7 @@
 package ejson
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -8,9 +9,12 @@ import (
 	"labix.org/v2/mgo/bson"
 )
 
-const j = `{"_id":{"$oid":"53c2ab5e4291b17b666d742a"},"last_seen_at":{"$date":1405266782008},"display_name":{"$undefined":true},
-"ref":{"$ref":"col2", "$id":"53c2ab5e4291b17b666d742b"},
-"d":1405266782008}`
+const (
+	j = `{"_id":{"$oid":"53c2ab5e4291b17b666d742a"},"last_seen_at":{"$date":1405266782008},"display_name":{"$undefined":true},
+"ref":{"$ref":"col2", "$id":"53c2ab5e4291b17b666d742b"}, "d":1405266782008}`
+
+	so25218061 = `{ "Tmin": { "$gt" : { "$date" : 1136156400000 }}}`
+)
 
 type TestS struct {
 	Id          bson.ObjectId `bson:"_id"`
@@ -31,4 +35,16 @@ func TestUnmarshal(t *testing.T) {
 	if ts.Ref.Id != bson.ObjectIdHex("53c2ab5e4291b17b666d742b") {
 		t.Fatal("Unexpected ts.Ref.Id")
 	}
+}
+
+func TestConvertEjson(t *testing.T) {
+	var m map[string]interface{}
+	if err := json.Unmarshal([]byte(so25218061), &m); err != nil {
+		t.Fatal(err)
+	}
+	err := Normalize(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%#v", m)
 }
