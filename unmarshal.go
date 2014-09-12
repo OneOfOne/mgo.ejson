@@ -68,6 +68,13 @@ func Normalize(m map[string]interface{}) error {
 					return err
 				}
 			}
+		} else if sm, ok := m[key].([]interface{}); ok {
+			for i := range sm {
+				curr := (sm[i]).(map[string]interface{})
+				if err := Normalize(curr); err != nil {
+					return err
+				}
+			}
 		}
 	}
 	return nil
